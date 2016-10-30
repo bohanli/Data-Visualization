@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8" />
+<title>My Treemap</title>
+<script src = "flare2.js"></script>
+<script src = "treemap.js"></script>
+</head>
+<body>
+<canvas id = "disp" height = "700" width = "1000"/>
+</body>
+<script>
+var canvas = document.getElementById("disp");
+
+var params = {};
+params.canvas = canvas;
+params.data = flare;
+
+var treemap = new Treemap(params);
+treemap.run();
+
+</script>
+</html>

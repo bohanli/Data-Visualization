@@ -1,0 +1,90 @@
+<!DOCTYPE>
+<html>
+<head>
+  <meta charset = "utf-8" />
+  <title>Force Directed Graph - D3 Version</title>
+  <script src="../d3.js"></script>
+  <style>
+
+    .node{
+      font-size: 5px;
+    }
+
+    .link{
+      stroke: #999;
+      stroke-opacity: 0.9;
+    }
+
+  </style>
+</head>
+<body>
+  <script>
+
+  var width = 800,
+    height = 600;
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  var force = d3.layout.force()
+    .size([width, height])
+    .linkDistance(30)
+    .linkStrength(1)
+    .friction(0.8)
+    .charge(-1200)
+
+  d3.json("dataset.json", function(graph) {
+
+    //transform structure of graph
+    force
+      .nodes(graph.nodes)
+      .links(graph.links)
+      .start();
+
+    // append links first, then nodes, to avoid links covering nodes
+    var link = svg.selectAll(".link")
+      .data(graph.links)
+      .enter()
+      .append("line")
+      .attr("class", "link")
+      .call(force.drag);
+
+    // d3.scale.category10(), d3.scale.category20(), d3.scale.category20b()和d3.scale.category20c(), all for color, very useful
+    var color = d3.scale.category10();
+
+    var node = svg.selectAll(".node")
+      .data(graph.nodes)
+      .enter()
+      .append("text")
+      .attr("class", "node")
+      .style("fill", function(d) { return color(d.group); })
+      .style("font-size", function(d) { 
+        if( d.group == 1 )
+          return "20px";
+        else
+          return "5px";
+      })
+      .style("font-family", function(d) { if( d.group == 1 ) return "微软雅黑";})
+      .text(function(d) {
+        return d.name;
+      })
+      .call(force.drag);
+
+    force.on("tick", function() {
+      link
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+
+      node
+        .attr("x", function(d) { return d.x })
+        .attr("y", function(d) { return d.y } )
+    });
+
+  })
+
+  </script>
+<body>
+</html>

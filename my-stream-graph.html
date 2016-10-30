@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>My Stream Graph</title>
+<script>
+
+function MyStreamGraph(params)
+{
+	this.layers = params.layers;
+	this.layerNum = params.layerNum;
+	this.sampleNumPerLayer = params.sampleNumPerLayer;
+
+	this.canvas = params.canvas;
+	this.colorRange = params.colorRange;
+}
+
+MyStreamGraph.prototype = 
+{
+	run: function()
+	{
+		var canvas = this.canvas;
+		var ctx = canvas.getContext('2d');
+
+		var layers = this.layers;
+
+		// calc f
+		for( var i = 0; i < layerNum; i++ )
+			for( var j = 0; j < sampleNumPerLayer; j++ )
+				layers[i][j].f = layers[i][j].y;
+
+
+		// order layers
+		for( var i = 0; i < layerNum; i++ )
+		{
+			layers[i][0].weight = 0;
+			for( var j = 0; j < sampleNumPerLayer; j++ )
+			{
+				layers[i][0].weight += layers[i][j].f;
+			}
+		}
+		layers.sort( function(a, b){ return a[0].weight < b[0].weight ? 1 : -1 } );
+		var frontIndex = layerNum + layerNum, endIndex = layerNum + layerNum - 1;
+		for( var i = 0; i < layerNum; i++ )
+		{
+			var frontSum = 0, endSum = 0;
+			for( var j = frontIndex; j < layerNum + layerNum; j++ )
+				frontSum += layers[j][0].weight;
+			for( var j = layerNum + layerNum ; j < endIndex; j++ )
+				endSum += layers[j][0].weight;
+			if( frontSum < endSum )
+				layers[--frontIndex] = layers[i];
+			else
+				layers[++endIndex] = layers[i];
+		}
+		for( var i = 0; i < layerNum; i++ )
+		{
+			layers[i] = layers[frontIndex + i];
+			layers[frontIndex + i] = {};
+		}
+
+		// calc g
+		for( var i = 0; i < sampleNumPerLayer; i++ )
+		{
+			for( var j = 0; j < layerNum; j++ )
+			{
+				layers[j][i].g = 0;
+				for( var k = 0; k <= j; k++ )
+					layers[j][i].g += layers[k][i].f;
+			}
+		}
+
+		// calc baseline
+		var baseline = [];
+		
+		/*for( var i = 0; i < sampleNumPerLayer; i++ )
+		{
+			var singleElem = {};
+			singleElem.x = i;
+
+			singleElem.f = 0;
+			for( var j = 1; j < layerNum; j++ )
+			{
+				singleElem.f += ( layerNum - j + 1) * layers[j][i].f;
+			}
+			singleElem.f /= - ( layerNum + 1 );	
+			//singleElem.f =  - layers[layerNum - 1][i].g / 2;
+			singleElem.g = 0;
+			baseline.push(singleElem);
+		}*/
+
+		for( var i = 0; i < sampleNumPerLayer - 1; i++ )
+		{
+			if( i == 0 )
+			{
+				baseline[i] = {};
+				baseline[i].x = i;
+				baseline[i].f = 0;
+				for( var j = 1; j < layerNum; j++ )
+				{
+					baseline[i].f += ( layerNum - j + 1) * layers[j][i].f;
+				}
+				baseline[i].f /= - ( layerNum + 1 );
+				baseline[i].df = 0;	
+				baseline[i].g = 0;			
+			}
+
+			baseline[i].df = 0;
+			for( var j = 0; j < layerNum; j++ )
+			{
+				var tmpSum = 0;
+				if( j >= 2 )
+					for( var k = 1; k < j; k++ )
+						tmpSum += layers[k][i + 1].f - layers[k][i].f;			
+				baseline[i].df += layers[j][i].f * ( 0.5 * ( layers[j][i + 1].f - layers[j][i].f) + tmpSum );
+			}
+			baseline[i].df /= - layers[layerNum - 1][i].g;	
+
+			baseline[i + 1] = {};
+			baseline[i + 1].x = i + 1;
+			baseline[i + 1].f = baseline[i].f + baseline[i].df;
+			baseline[i + 1].g = 0;
+		}
+
+		layers[layerNum] = baseline;
+
+		for( var i = layerNum; i >= 0; i-- )
+		{
+			layers[i + 1] = layers[i];
+		}
+		layers[0] = layers[layerNum + 1];
+
+		// calc y
+		var dx = canvas.width / (sampleNumPerLayer - 1);
+
+		var highPeak = 0;
+		for( var i = 0; i < sampleNumPerLayer; i++ )
+			if( highPeak < layers[layerNum][i].g + layers[0][i].f )
+				highPeak = layers[layerNum][i].g + layers[0][i].f;
+
+		var lowPeak = 0;
+		for( var i = 0; i < sampleNumPerLayer; i++ )
+			if( lowPeak > layers[0][i].f )
+				lowPeak = layers[0][i].f;		
+
+		var max = ( highPeak > -lowPeak ) ? highPeak : -lowPeak;
+		var ratio = canvas.height / max / 2;
+		//var ratio = 20;
+		for( var i = 0; i <= layerNum; i++ )
+		{
+			for( var j = 0; j < sampleNumPerLayer; j++ )
+			{
+				layers[i][j].x = layers[i][j].x * dx;
+				layers[i][j].y = ( canvas.height / 2 + ratio * ( layers[i][j].g + layers[0][j].f ) );
+			}
+		}
+
+
+		// render
+		for( var i = layerNum; i >= 0; i-- )
+		{
+			//console.log("test");
+			ctx.beginPath();
+			ctx.moveTo(layers[i][0].x, layers[i][0].y);
+
+			for( var j = 1; j < sampleNumPerLayer; j++ )
+			{
+				ctx.lineTo(layers[i][j].x, layers[i][j].y);
+				//if( i != 0 )
+				//	ctx.strokeStyle = "#ffffff";
+				//else
+				//	ctx.strokeStyle = "#ffffff";
+				//ctx.lineWidth = 0;
+				//ctx.stroke();			
+			}
+			ctx.lineTo(canvas.width, 0);
+			ctx.lineTo(0, 0);
+
+			if( i != 0 )
+			{
+				//ctx.globalAlpha = 1;
+				//ctx.fillStyle = "#ffffff";
+				//ctx.globalAlpha = Math.random();
+				ctx.fillStyle = this.colorRange[ i % this.colorRange.length];
+			}
+			else
+			{
+				//ctx.globalAlpha = 1;
+				ctx.fillStyle = "#ffffff";
+			}
+			ctx.closePath();
+			ctx.fill();
+		}
+	}
+}
+
+</script>
+</head>
+<body>
+<canvas id = "theCanvas" height = "500" width = "960"/>
+<script>
+
+var params = {};
+params.canvas = document.getElementById("theCanvas");
+//params.colorRange = ["#78cdd1", "#ffffff"];
+params.colorRange = ["#50b7c1", "#78cdd1", "#008792", "#94d6da"];
+
+var layers = params.layers = [];
+var layerNum = params.layerNum = 20; // number of layers
+var sampleNumPerLayer = params.sampleNumPerLayer = 200; // number of samples per layer
+for( var i = 0; i < layerNum; i++ )
+{
+	var singleLayer = bumpLayer(sampleNumPerLayer);
+	layers.push(singleLayer);
+}
+
+var myStreamGraph = new MyStreamGraph(params);
+myStreamGraph.run();
+
+
+// test data generator
+function bumpLayer(n)
+{
+	function bump(a)
+	{
+		var x = 1 / (.1 + Math.random()),
+        y = 2 * Math.random() - .5,
+        z = 10 / (.1 + Math.random());
+
+    	for (var i = 0; i < n; i++)
+    	{
+			var w = (i / n - y) * z;
+			a[i] += x * Math.exp(-w * w);
+			//a[i] += 1;
+    	}
+	}
+
+	var a = [], i;
+	for (i = 0; i < n; ++i) a[i] = 0;
+	for (i = 0; i < 5; ++i) bump(a);
+	return a.map(function(d, i) { return {x: i, y: Math.max(0, d)}; });
+}
+
+</script>
+</body>
+</html>

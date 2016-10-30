@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>The Wealth & Health of Nations</title>
+<script src = "nations.js"></script>
+<script src = "scatterplot.js"></script>
+<script src = "jquery.js"></script>
+</head>
+<body>
+<script>
+var params = {}
+
+params.dataSet = nations;
+
+graph = new Scatterplot(params);
+graph.run();
+
+</script>
+<p>Notice: Move the cursor left or right above the "1800" region to switch year value.
+</body>
+</html>

@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>Langton Ant</title>
+</head>
+<body>
+<svg id="svg" style="width:98%; height:98%; position:absolute;"></svg>
+
+<script>
+
+function clearMatrix() {
+	for( var i = 0; i < dispWidth/delta; i++ ) {
+		for( var j = 0; j < dispHeight/delta; j++ ) {
+			if( j == 0 ) {
+				matrix[i] = [];
+			}
+			matrix[i][j] = 0;
+		}
+	}
+}
+
+function randomMatrix() {
+	for( var i = 0; i < dispWidth/delta; i++ ) {
+		for( var j = 0; j < dispHeight/delta; j++ ) {
+
+/*			if( i < dispWidth/delta/3 || i > 2*dispWidth/delta/3 )
+				continue;
+			else if( j < dispHeight/delta/3 || j > 2*dispHeight/delta/3 )
+				continue; 
+*/
+			r = Math.random()*5;
+			if( r < 3 )
+				matrix[i][j] = 0;
+			else
+				matrix[i][j] = 1;
+		}
+	}
+}
+
+function drawMatrix() {
+	for( var i = 0; i < dispWidth/delta; i++ ) {
+		for( var j = 0; j < dispHeight/delta; j++ ) {
+			var tile = document.getElementById("rect"+i+","+j);
+			if( matrix[i][j] == 0 )
+				tile.setAttribute("fill", "black");
+			else
+				tile.setAttribute("fill", "white");
+		}
+	}	
+}
+
+function moveScreen(moveDirection) {
+	if( moveDirection == 3 ) { // up
+		for( var i = 0; i < dispWidth/delta; i++ ) {
+			for( var j = 0; j < dispHeight/delta; j++ ) {
+				if( j < dispHeight/delta - 1 ) {
+					matrix[i][j] = matrix[i][j+1];
+				}
+				else {
+					matrix[i][j] = 0;
+				}
+				
+			}
+		}	
+	}
+	else if( moveDirection == 1 ) { // down
+		for( var i = 0; i < dispWidth/delta; i++ ) {
+			for( var j = dispHeight/delta - 1; j >= 0 ; j-- ) {
+				if( j > 0 ) {
+					matrix[i][j] = matrix[i][j-1];
+				}
+				else {
+					matrix[i][j] = 0;
+				}
+				
+			}
+		}	
+	}
+	else if( moveDirection == 0 ) { // right
+		for( var i = dispWidth/delta - 1; i >= 0; i-- ) {
+			for( var j = 0; j < dispHeight/delta; j++ ) {
+				if( i > 0 ) {
+					matrix[i][j] = matrix[i-1][j];
+				}
+				else {
+					matrix[i][j] = 0;
+				}
+				
+			}
+		}	
+	}
+	else if( moveDirection == 2 ) { // left
+		for( var i = 0; i < dispWidth/delta; i++ ) {
+			for( var j = 0; j < dispHeight/delta; j++ ) {
+				if( i < dispWidth/delta - 1 ) {
+					matrix[i][j] = matrix[i+1][j];
+				}
+				else {
+					matrix[i][j] = 0;
+				}
+				
+			}
+		}	
+	}
+}
+
+
+dispWidth = 800;
+dispHeight = 600;
+delta = 20;
+
+var svg = document.getElementById("svg");
+
+for( var x = 0; x < dispWidth; x += delta ) {
+	for( var y = 0; y < dispHeight; y += delta ) {
+		var tile = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+		tile.setAttribute("id", "rect"+x/delta+","+y/delta);
+		tile.setAttribute("x", x);
+		tile.setAttribute("y", y);
+		tile.setAttribute("width", delta);
+		tile.setAttribute("height", delta);
+		tile.setAttribute("stroke", "#999d9c");
+		svg.appendChild(tile);			
+	}
+}
+
+var matrix = [];
+clearMatrix();
+randomMatrix();
+
+var X = dispWidth/delta/2, Y = dispHeight/delta/2;
+var direction = 0; // 0E 1S 2W 3N
+
+setInterval(function runLangtonAnt() {
+	if( matrix[X][Y] == 0 )
+	{
+		direction += 1;
+		if( direction == 4 )
+			direction = 0;
+
+		matrix[X][Y] = 1;
+		console.log(matrix[X][Y])
+	}
+	else
+	{
+		direction -= 1;
+		if( direction == 0 )
+			direction = 3;
+		matrix[X][Y] = 0;
+	}
+
+	if( direction == 0 ) {
+		X++;
+	}
+	else if( direction == 1 ) {
+		Y--;
+	}
+	else if( direction == 2 ) {
+		X--;
+	}
+	else {
+		Y++;
+	}
+
+
+	drawMatrix();
+
+	if( X < 0 ) {
+		moveScreen(0);
+		X++;
+	}
+	else if( X > dispWidth/delta - 1 ) {
+		moveScreen(2);
+		X--;
+	}
+	else if( Y < 0 ) {
+		moveScreen(1);
+		Y++;
+	}
+	else if( Y > dispHeight/delta - 1 ) {
+		moveScreen(3);
+		Y--;
+	}
+		
+
+}, 100);
+
+
+
+</script>
+</body>
+</html>

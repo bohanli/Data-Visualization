@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8" />
+<title>My Force-directed Graph</title>
+<script src="jquery.js"> </script>
+<script src="miserables.js"> </script>
+<script>
+
+// graph
+
+function Graph()
+{
+	this.nodes = [];
+	this.edges = [];
+
+	this.nodeNum = 0;
+	this.edgeNum = 0;
+}
+
+Graph.prototype = 
+{
+	AddNode: function(params)
+	{
+		var node = {};
+		node.id = this.nodeNum++;
+		node.name = params.name || "node";
+		node.color = params.color || "#229655";
+		this.nodes.push(node);
+		return node;
+	},
+
+	AddEdge: function(params)
+	{
+		var edge = {};
+		edge.id = this.edgeNum++;
+		edge.source = params.source;
+		edge.target = params.target;
+		edge.value = params.value || 1;
+
+		this.edges.push(edge);
+		return edge;
+	}
+}
+
+// vector
+
+function Vector(x, y)
+{
+	this.x = x;
+	this.y = y;
+}
+
+Vector.prototype = 
+{
+	random: function(xb, yb)
+	{
+		return new Vector(Math.random() * xb, Math.random() * yb);
+	},
+
+	add: function(vect)
+	{
+		return new Vector(this.x + vect.x, this.y + vect.y);
+	},
+
+	sub: function(vect)
+	{
+		return new Vector(this.x - vect.x, this.y - vect.y);
+	},
+
+	mul: function(k)
+	{
+		return new Vector(this.x * k, this.y * k);
+	},
+
+	div: function(k)
+	{
+		return new Vector(this.x / k, this.y / k);
+	},
+
+	norm: function()
+	{
+		return Math.sqrt(this.x * this.x + this.y * this.y);
+	},
+
+	normalise: function()
+	{
+		return this.div(this.norm());
+	}
+}
+
+// Ball
+
+function Ball(pos, mass)
+{
+	this.p = pos;
+	this.m = mass;
+	this.v = new Vector(0, 0);
+	this.a = new Vector(0, 0);
+}
+
+// Spring
+
+function Spring(b1, b2, len, k)
+{
+	this.b1 = b1;
+	this.b2 = b2;
+	this.len = len;
+	this.k = k;
+}
+
+function Layout(graph, canvas)
+{
+	this.graph = graph;
+	//this.attractCoef = 40.0;
+	//this.repelCoef = 400.0;
+	this.attractCoef = 150.0; //
+	this.repelCoef = 150.0; //
+	this.vDampingCoef = 0.74;
+	this.ballMass = 100.0;
+	this.springLen = 15.0;
+	this.dt = 0.1;
+	this.updateCycle = 10;
+	this.padding = 10;
+
+	//console.log(canvas);
+
+	this.canvas = canvas;
+	this.ctx = canvas.getContext("2d");
+
+	this.ballSet = {};
+	this.springSet = {};
+	this.isRunning = false;	
+}
+
+Layout.prototype = 
+{
+	ball: function(node)
+	{
+		if(node.id in this.ballSet)
+		{
+			return this.ballSet[node.id];
+		}
+		else
+		{
+			var mass = this.ballMass;
+			var pos = new Vector().random(this.canvas.width, this.canvas.height);
+			//console.log(pos);
+			var newBall = new Ball(pos, mass);
+
+			newBall.name = node.name;
+			newBall.color = node.color;
+
+			//console.log(newBall);
+			this.ballSet[node.id] = newBall;
+			//console.log(this.ballSet[node.id].p);
+			return this.ballSet[node.id];
+		}
+		
+	},
+
+	spring: function(edge)
+	{
+		if(edge.id in this.springSet)
+		{
+			return this.springSet[edge.id];
+		}
+		else
+		{
+			var b1 = this.ball(edge.source);
+			var b2 = this.ball(edge.target);
+			var len =  edge.value || this.springLen;
+			var k = this.attractCoef;
+			var newSpring = new Spring(b1, b2, len, k);
+			//console.log(newSpring.b1.p);
+			this.springSet[edge.id] = newSpring;
+			//console.log(this.springSet[edge.id].b1.p);
+			return this.springSet[edge.id];
+		}
+
+		
+	},
+
+	eachNode: function(callback)
+	{
+		var t = this;
+		t.graph.nodes.forEach(function(n)
+		{
+			callback.call(t, t.ball(n));
+		});
+	},
+
+	eachEdge: function(callback)
+	{
+		var t = this;
+		this.graph.edges.forEach(function(e)
+		{
+			callback.call(t, t.spring(e));
+		});
+	},
+
+	checkRepel: function()
+	{
+		var g = this.repelCoef;
+
+		this.eachNode(function(b1)
+		{
+			this.eachNode(function(b2)
+			{
+				if( b1 != b2 )
+				{
+					var d = (b2.p.sub(b1.p));
+					var dist = d.norm();
+					if( dist < 0.1 )
+						dist = 0.1;
+
+					var fVal = g * b1.m * b2.m / ( dist * dist );
+					var fDir = d.normalise();
+					var f = fDir.mul(fVal);
+					
+					this.updateA(b1, f.mul(-1));
+					this.updateA(b2, f);
+				}
+			});
+		});
+	},
+
+	checkAttract: function()
+	{
+		this.eachEdge(function(s)
+		{
+			var d = (s.b2.p).sub(s.b1.p);
+			var fVal = s.k * ( d.norm() - s.len );
+			var fDir = d.normalise();
+			var f = fDir.mul(fVal);
+			this.updateA(s.b1, f);
+			this.updateA(s.b2, f.mul(-1));
+		});
+	},
+
+	checkBound: function()
+	{
+		var padding = this.padding;
+		this.eachNode(function(b)
+		{
+			if( b.p.x < 0 )
+			{
+				b.p.x = padding;
+				b.v = (b.v).mul(-1);
+			}
+			else if( b.p.x > this.canvas.width )
+			{
+				b.p.x = this.canvas.width - padding;
+				b.v = (b.v).mul(-1);
+			}
+			else if( b.p.y < 0 )
+			{
+				b.p.y = padding;
+				b.v = (b.v).mul(-1);
+			}
+			else if( b.p.y > this.canvas.height )
+			{
+				b.p.y = this.canvas.height - padding;
+				b.v = (b.v).mul(-1);
+			}
+		});		
+	},
+
+	updateA: function(b, f)
+	{
+		b.a = b.a.add(f.div(b.m));
+	},
+
+	updateV: function(dt)
+	{
+		this.eachNode(function(b)
+		{
+			b.v = (b.v).add(b.a.mul(dt));
+			b.v = (b.v).mul(this.vDampingCoef);
+			b.a = new Vector(0, 0);
+		});
+	},
+
+	updateP: function(dt)
+	{
+		this.eachNode(function(b)
+		{
+			b.p = b.p.add(b.v.mul(dt));
+		});
+	},
+
+	clk: function(callback)
+	{
+		setTimeout(callback, this.updateCycle);
+	},
+
+	run: function()
+	{
+		var t =this;
+		var dt = this.dt;
+		var selectedBall = null;
+		var clickedBall = null;
+
+		if( this.isRunning == true )
+			return;
+		else 
+			this.isRunning = true;
+
+		$("#myCanvas").dblclick(function(e)
+		{
+			var pos = jQuery(this).offset();
+			var p = new Vector(e.pageX - pos.left, e.pageY - pos.top);
+			clickedBall = layout.nearest(p);
+			alert(clickedBall.name);
+		});
+
+		$("#myCanvas").mousedown(function(e)
+		{
+			var pos = jQuery(this).offset();
+			var p = new Vector(e.pageX - pos.left, e.pageY - pos.top);
+			selectedBall = layout.nearest(p);
+		});
+
+		$("#myCanvas").mousemove(function(e)
+		{
+			var pos = jQuery(this).offset();
+			var p = new Vector(e.pageX - pos.left, e.pageY - pos.top);
+
+			if (selectedBall != null)
+			{
+				selectedBall.p.x = p.x;
+				selectedBall.p.y = p.y;
+			}
+		});
+
+		$(window).bind('mouseup',function()
+		{
+			selectedBall = null;
+		});
+
+		this.clk(function step()
+		{
+			console.log("step");
+			t.checkAttract();
+			t.checkRepel();
+			t.updateV(dt);
+			t.updateP(dt);
+			t.checkBound();
+			t.renderer();
+			t.clk(step);
+		});
+	},
+
+	renderer: function()
+	{
+		var canvas = this.canvas;
+		var ctx = this.ctx;
+
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+		this.eachEdge(function(s)
+		{
+			ctx.strokeStyle = "#999d9c";
+			ctx.beginPath();
+			ctx.moveTo(s.b1.p.x, s.b1.p.y);
+			ctx.lineTo(s.b2.p.x, s.b2.p.y);
+			ctx.stroke();
+		});
+
+		this.eachNode(function(b)
+		{
+			var canvas = this.canvas;
+			var ctx = this.ctx;
+			var ballSize = 10;
+			var padding = 1;
+
+			// draw padding
+			ctx.fillStyle = "#ffffff";
+			ctx.beginPath();
+			ctx.arc(b.p.x, b.p.y, ballSize / 2 + padding, 0, Math.PI * 2, true);
+			ctx.closePath();
+			ctx.fill();
+
+			// draw inner part
+			ctx.fillStyle = b.color || "#229655";
+			ctx.beginPath();
+			ctx.arc(b.p.x, b.p.y, ballSize / 2, 0, Math.PI * 2, true);
+			ctx.closePath();
+			ctx.fill();
+		});
+
+	},
+
+	nearest: function(p)
+	{
+		var rst = null;
+		var minDist = null;
+
+		this.eachNode(function(n)
+		{
+			if( minDist == null || (p.sub(n.p)).norm() < minDist )
+			{
+				minDist = (p.sub(n.p)).norm();
+				rst = n;
+			}
+		})
+
+		return rst;
+	}
+}
+
+</script>
+</head>
+<body style = "text-align: center">
+<canvas id = "myCanvas"  width = "640" height = "640"/>
+<script>
+var graph = new Graph();
+var nodes = [];
+var colors = ["#ef5b9c",
+	"#f47920", 
+	"#ffd400", 
+	"#7fb80e", 
+	"#5c7a29", 
+	"#007d65", 
+	"#009ad6", 
+	"#11264f", 
+	"#8552a1", 
+	"#596032", 
+	"#46485f"];
+
+for( var i = 0; i < 77; i++ )
+{
+	var params = {};
+	params.name = miserables.nodes[i].name;
+	params.color = colors[miserables.nodes[i].group];
+	nodes[i] = graph.AddNode(params);
+}
+
+for( var i = 0; i < 254; i++ )
+{
+	var params = {};
+	params.source = nodes[miserables.links[i].source];
+	params.target = nodes[miserables.links[i].target];
+	params.value = miserables.links[i].value;
+	graph.AddEdge(params);
+}
+
+var canvas = document.getElementById("myCanvas");
+
+var layout = new Layout(graph, canvas);
+layout.run();
+
+</script>
+</body>
+</html>

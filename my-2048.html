@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8">
+<title>My 2048</title>
+<script type = "text/javascript">
+function My2048(mainBlock, startButton)
+{
+	this.mainBlock = mainBlock;
+	this.startButton = startButton;
+	this.tiles = new Array(16);
+}
+
+My2048.prototype = 
+{
+	init: function()
+	{
+		for(var i = 0; i < 16; i++ )
+		{
+			this.newTile(i, 0);
+		}
+			
+		this.randomTile();
+		this.randomTile();
+	},
+
+	newTile: function(index, val)
+	{
+		var tile = document.createElement('div');
+		tile = this.setTileVal(tile, val);
+
+		tile.setAttribute('index', index);
+		this.mainBlock.appendChild(tile);
+		this.tiles[index] = tile;
+	},
+
+	setTileVal: function(tile, val)
+	{
+		tile.setAttribute('val', val);
+		tile.innerHTML = val > 0? val : '';
+		if( val == 0 )
+			tile.setAttribute('style', "background: #d3d7d4");
+		else if( val == 2 )
+			tile.setAttribute('style', "background: #b2d235");
+		else if( val == 4 )
+			tile.setAttribute('style', "background: #7fb80e");
+		else if( val == 8 )
+			tile.setAttribute('style', "background: #1d953f");
+		else if( val == 16 )
+			tile.setAttribute('style', "background: #007d65");
+		else if( val == 32 )
+			tile.setAttribute('style', "background: #225a1f");
+		else if( val == 64 )
+			tile.setAttribute('style', "background: #008792");
+		else if( val == 128 )
+			tile.setAttribute('style', "background: #1b315e");
+		else if( val == 256 )
+			tile.setAttribute('style', "background: #401c44");
+		else if( val == 512 )
+			tile.setAttribute('style', "background: #ef5b9c");
+		else if( val == 1024 )
+			tile.setAttribute('style', "background: #bd6758");
+		else if( val == 2048 )
+			tile.setAttribute('style', "background: #ed1941");
+
+		return tile;
+	},
+
+	randomTile: function()
+	{
+		zeroTiles = new Array;
+		for( var i = 0; i < 16; i++ )
+		{
+			if( this.tiles[i].getAttribute('val') == 0 )
+				zeroTiles.push(this.tiles[i]);
+		}
+		var rTile = zeroTiles[Math.floor(Math.random() * zeroTiles.length)];
+		this.setTileVal(rTile, 2);
+	},
+
+	merge: function(tile1, tile2)
+	{
+		var val1 = tile1.getAttribute('val');
+		var val2 = tile2.getAttribute('val');
+
+		if( val2 )
+			if( val1 == val2 )
+			{
+				this.setTileVal(tile1, val1 * 2);
+				this.setTileVal(tile2, 0);
+			}
+			else if( val1 == 0 )
+			{
+				this.setTileVal(tile1, val2);
+				this.setTileVal(tile2, 0);
+			}
+	},
+
+	move: function(direction)
+	{	
+		var i, j;
+
+		if( direction == 37 ) // left
+		{
+			for( i = 0; i < 16; i++ )
+			{
+				j = i;
+				while( j % 4 )
+				{
+					this.merge(this.tiles[j - 1], this.tiles[j]);
+					//console.log(j);
+					j--;
+				}
+			}
+		}
+		else if( direction == 38 ) // up
+		{
+			for( i = 0; i < 16; i++ )
+			{
+				j = i;
+				while( j > 3 )
+				{
+					this.merge(this.tiles[j - 4], this.tiles[j]);
+					j -= 4;
+				}
+			}
+		}
+		else if( direction == 39 ) // right
+		{
+			for( i = 14; i >= 0; i-- )
+			{
+				j = i;
+				while( j % 4 != 3 )
+				{
+					this.merge(this.tiles[j + 1], this.tiles[j]);
+					j++;
+				}
+			}
+		}
+		else if( direction == 40 ) // down
+		{
+			for( i = 16; i >= 0; i-- )
+			{
+				j = i;
+				while( j < 12 )
+				{
+					this.merge(this.tiles[j + 4], this.tiles[j]);
+					j += 4;
+				}
+			}
+		}
+
+		this.randomTile();
+	},
+
+	win: function() // win or lose
+	{
+		for( var i = 0; i < 16; i++ )
+			if( this.tiles[i].getAttribute('val') == 2048 )
+				return true;
+		return false;
+	},
+
+	over: function()
+	{
+		if( this.win() == true )
+			return false;
+
+		for( var i = 0; i < 16; i++ )
+			if( this.tiles[i].getAttribute('val') == 0 )
+				return false;
+			else if( i % 4 )
+				if( this.tiles[i - 1].getAttribute('val') == this.tiles[i].getAttribute('val') )
+					return false;
+			else if( i > 3 )
+				if( this.tiles[i - 4].getAttribute('val') == this.tiles[i].getAttribute('val') )
+					return false;
+		return true;
+	},
+
+	clear: function()
+	{
+		for( var i = 0; i < 16; i++ )
+			this.mainBlock.removeChild(this.tiles[i]);
+		this.tiles = new Array(16);
+	}
+}
+
+
+var my2048;
+
+window.onload = function()
+{
+	var mainBlock = document.getElementById('mainBlock');
+	var startButton = document.getElementById('startButton');
+	startButton.onclick = function()
+	{
+		this.style.display = 'none';
+		my2048 = new My2048(mainBlock, startButton);
+		my2048.init();	
+	}
+}
+
+window.onkeydown = function(e)
+{
+//	console.log(e.keyCode);
+	if( 37 <= e.keyCode && e.keyCode <= 40 )
+	{
+		if( my2048.over() == false )
+			my2048.move(e.keyCode);
+		else
+		{
+			if( my2048.win() )
+				startButton.innerHTML = "You win! Click here to play again!";
+			else
+				startButton.innerHTML = "Game over! Click here to play again!";
+			startButton.style.display = "block";
+			my2048.clear();
+		}
+	}
+}
+</script>
+<style type="text/css">
+#mainBlock
+{
+	width: 500px;
+	height: 500px;
+	margin: auto; /* center */
+	background-color: #f6f5ec; 
+}
+
+#startButton
+{
+	/* object style */
+	width: 500px;
+	height: 500px;
+	background-color: #008792;
+
+	/* word style */
+	font-size: 25px;
+	line-height: 500px; /* height of a single line */
+	text-align: center; /*  horizontally center */
+	color: #FFFFFF;
+
+	/* display status */
+	display: block;
+}
+
+[val]
+{
+	width: 100px;
+	height: 40px;
+	margin: 20px 0px 0px 20px; /* up right down left */
+	padding: 30px 0px 30px 0px;
+
+	font-size: 40px;
+	line-height: 40px;
+	text-align: center;
+
+	float: left;
+}
+</style>
+</head>
+<body>
+	<h1 style = "text-align : center">My 2048</h1>
+	<div id = "mainBlock">
+		<a id = "startButton">Click here to start!</a>
+	</div>
+</body>
+</html>

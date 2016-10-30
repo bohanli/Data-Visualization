@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>Scatterplot Matrix</title>
+<script src = "data.js"></script>
+<script src = "matrix.js"></script>
+<script src = "jquery.js"></script>
+</head>
+<body>
+<script>
+	//console.log(dims)
+	//console.log(dataSet)
+
+	var params = {};
+	params.dims = dims;
+	params.dataSet = dataSet;
+	matrix = new Matrix(params);
+	matrix.run()
+</script>
+	
+</body>
+</html>

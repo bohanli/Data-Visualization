@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>My Word Cloud</title>
+<script src = "my-word-cloud.js"></script>
+</head>
+<body>
+<canvas id = "theCanvas" height = "300" width = "300"/>
+<script>
+//var wordSet = ["I", "love", "you", "more", "than", "yesterday", "and", "less", "than", "tomorrow"];
+var wordSet = ["挖掘机","技术", "哪家", "强", "中国", "山东","找","蓝翔"];
+
+//var font = "impact";
+var font = "华文彩云";
+
+var words = [];
+
+for( var i = 0; i < wordSet.length; i++ )
+{
+	var newWord = {};
+	newWord.word = wordSet[i];
+	newWord.weight = Math.floor( 2 + Math.random() * 6 );
+	words.push(newWord);
+}
+
+var canvas = document.getElementById("theCanvas");
+
+var params = {};
+params.words = words;
+params.canvas = canvas;
+params.font = font;
+
+var myWordCloud = new MyWordCloud(params);
+myWordCloud.run();
+</script>
+</body>
+</html>

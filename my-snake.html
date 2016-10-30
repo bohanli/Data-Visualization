@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8">
+<title>My Snake</title>
+<script src = "jquery.js"></script>
+
+</head>
+<body>
+	<h1 style = "text-align : center; font-family: 'consolas'; font-size: 30px">My Snake</h1>
+	<div id = "mainBlock" style = "text-align : center">
+		<canvas id = "myCanvas" width = "500" height = "530"/>
+	</div>
+</body>
+
+<script>
+
+
+function Game(params)
+{
+	this.tiles = new Array(2500);
+	this.snake = new Array; // index of elements of snake
+	this.fruit = {};
+	this.head = {};
+	this.tail = {};
+	this.direction = 39;
+	this.isRunning = false;
+	this.canvas = params.canvas; ///
+	this.ctx;
+	this.ticks = 0;
+	this.interval = params.interval;
+}
+
+Game.prototype = 
+{
+	init: function()
+	{
+		this.isRunning = true;
+
+		// initial all tiles
+		for(var i = 0; i < 2500; i++ )
+			this.tiles[i] = 0;
+
+		// initial snake
+		var head = this.head;
+		head.index = ( 15 + Math.floor( Math.random() * 20 ) ) * 50 + 15 + Math.floor( Math.random() * 20 );
+		head.x = Math.floor( head.index % 50 );
+		head.y = Math.floor( head.index / 50 );
+
+		for(var i = 4; i > 0; i-- )
+		{
+			var index = head.index + i;
+			this.snake.push(index);
+			this.tiles[index] = 1;
+		}
+
+		this.randomFruit();
+		this.draw();
+	},
+
+	draw: function(instr)
+	{
+		var canvas = this.canvas;
+		var ctx = this.ctx = canvas.getContext("2d");
+		ctx.fillStyle = "#FFFFFF";
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+		if( instr == 0 )
+		{
+			ctx.fillStyle = "#e6e6fb";
+			ctx.fillRect(0, 0, 500, 500);
+			ctx.font = "20px consolas";
+			ctx.fillStyle = "#226841";
+			ctx.fillText("Cost Time: " + Math.floor( this.ticks / this.interval ), 80, 250);
+			ctx.fillText("Snake Length: " + this.snake.length, 80, 300);
+			ctx.fillText("Game Over. Click to play again!", 80, 200);
+
+			return;
+		}
+
+		for( var i = 0; i < 2500; i++ )
+		{
+			var x = Math.floor( i % 50 );
+			var y = Math.floor( i / 50 );
+			if( this.tiles[i] == 1 )
+				ctx.fillStyle = "#229655";
+			else
+				ctx.fillStyle = "#e6e6fb";
+			ctx.fillRect(x * 10, y * 10, 10, 10);
+			
+		}
+		ctx.fillStyle = "#226841";
+		ctx.fillRect(0, 500, 500, 20);
+		ctx.fillStyle = "#e6e6fb";
+		ctx.font = "16px consolas";
+		ctx.fillText("Cost Time: " + Math.floor( this.ticks / this.interval ) + " seconds      Snake Length: " + this.snake.length, 0, 516);
+
+	},
+
+	move: function(direction)
+	{
+		//console.log( "snake length" + this.snake.length);
+		if( this.isRunning == false )
+			return;
+		var head = this.head;
+		var tail = this.tail;
+		head.index = this.snake[0];
+		head.x = Math.floor( this.snake[0] % 50 );
+		head.y = Math.floor( this.snake[0] / 50 );
+		tail.index = this.snake[this.snake.length - 1];
+		
+		this.ticks = this.ticks + 1;
+
+		var i = this.snake.length;
+		
+		if( head.index != this.fruit.index )
+			this.tiles[tail.index] = 0;	
+		else
+		{
+			this.randomFruit();
+			i++;	
+		}
+
+		if( direction == 37 ) head.x--;// left
+		else if( direction == 38 ) head.y--;// up
+		else if( direction == 39 ) head.x++;// right
+		else if( direction == 40 ) head.y++;// down
+
+		head.index = ( head.x + head.y * 50 );
+
+		while( --i )
+			this.snake[i] = this.snake[i - 1];
+
+		this.snake[0] = head.index;
+		this.tiles[head.index] = 1;
+
+		this.draw();
+
+		if( this.over() )
+		{
+			game.clear();
+		}
+	},
+
+	randomFruit: function()
+	{
+		var fruit = this.fruit;
+		fruit.x = 10 + Math.floor( Math.random() * 30 );
+		fruit.y = 10 + Math.floor( Math.random() * 30 );
+		var index = fruit.x + fruit.y * 50;
+		while( this.tiles[index] == 1)
+		{
+			fruit.x = 10 + Math.floor( Math.random() * 10 );
+			fruit.y = 10 + Math.floor( Math.random() * 10 );
+			var index = fruit.x + fruit.y * 50;			
+		}
+		this.tiles[index] = 1;
+		fruit.index = index;
+
+	},
+
+	over: function()
+	{
+		var snake = this.snake;
+		var head = this.head;
+		if( head.x < 0 || 50 <= head.x  || head.y < 0 || 50 <= head.y )
+			return true;
+
+		for( var i = 0; i < snake.length; i++ )
+			for( var j = 0; j < snake.length; j++)
+				if( i != j && snake[i] == snake[j] )
+					return true;
+
+		return false;
+	},
+
+	clear: function()
+	{
+		this.isRunning = false;
+		this.draw(0);
+		this.tiles = new Array(2500);
+		this.snake = new Array;
+		this.fruit = {};
+		this.head = {};
+		this.tail = {};
+		this.ticks = 0;
+	},
+
+	changeDirection: function(d)
+	{
+		this.direction = d;
+	}
+}
+
+var game;
+var timerId;
+
+
+window.onload = function()
+{
+	var interval = 5;
+	var cycle = Math.floor( 1000 / interval );
+	var canvas = document.getElementById("myCanvas");
+	var ctx = this.ctx = canvas.getContext("2d");
+	ctx.fillStyle = "#e6e6fb";
+	ctx.fillRect(0, 0, 500, 500);
+	//ctx.textBaseline = 'top';
+	//ctx.textAlign = 'center';
+	ctx.font = "40px consolas";
+	ctx.fillStyle = "#226841";
+	ctx.fillText("Click to start!", 80, 250);
+	canvas.onclick = function()
+	{
+		clearInterval( timerId );
+		//console.log("after clear   timerId: " + timerId);
+		timerId = null;
+		//console.log("after set null    timerId: " + timerId);
+		//console.log("run immediately!");
+		var params = {};
+		params.canvas = canvas;
+		params.interval = interval;
+		game = new Game(params);
+		game.init();
+		timerId = setInterval( function(){ if( game.isRunning == true ) game.move(game.direction); } , cycle );	
+		console.log("timerId: " + timerId);
+	}
+}
+
+
+
+
+window.onkeydown = function(e)
+{
+	if( 37 <= e.keyCode && e.keyCode <= 40 )
+		game.changeDirection(e.keyCode);
+}
+
+</script>
+
+</html>

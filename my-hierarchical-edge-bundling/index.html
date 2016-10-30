@@ -1,0 +1,43 @@
+
+<html>
+<head>
+<meta charset = "utf-8" />
+<title>Hierarchical Edge Bundling</title>
+<script src = "flare.js"></script>
+<script src = "EdgeBundling.js"></script>
+<script src = "jquery.js"></script>
+</head>
+<body>
+
+<svg id = "disp" height = "1000" width = "1000" xmlns="http://www.w3.org/2000/svg" version="1.1">
+</svg>
+
+<div style="position:absolute;bottom:0;font-size:18px;">Tension: 
+	<input id = "tension" style="position:relative;top:3px;" type="range" min="0" max="100" value="95">
+</div>
+
+</body>
+<script>
+var svg = document.getElementById("disp");
+
+var params = {};
+params.svg = svg;
+params.data = flare;
+
+var tension = document.getElementById("tension");
+params.beta = +tension.value/100.0;
+
+var edgeBundling = new EdgeBundling(params);
+edgeBundling.run();
+
+$("#tension").mouseup(function(e)
+{
+	params.beta = +tension.value/100.0;
+	console.log(params.beta);
+	svg.innerHTML = "";
+	var edgeBundling = new EdgeBundling(params);
+	edgeBundling.run();
+});
+
+</script>
+</html>

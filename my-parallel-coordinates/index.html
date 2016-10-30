@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset = "utf-8"/>
+<title>Parallel Coordinates</title>
+<script src = "cars.js"></script>
+<script src = "parallel.js"></script>
+<script src = "jquery.js"></script>
+</head>
+<body>
+
+<svg width = "1000" height = "500" id = "disp"></svg>
+
+<script>
+var dataSet = cars;
+
+var dims = {
+  cyl: {name: "cylinders", unit: ""},
+  dsp: {name: "displacement", unit: " sq in"},
+  lbs: {name: "weight", unit: " lbs"},
+  hp: {name: "horsepower", unit: " hp"},
+  acc: {name: "acceleration (0-60 mph)", unit: " sec"},
+  mpg: {name: "mileage", unit: " mpg"},
+  year: {name: "year", unit: ""}
+}
+
+
+var params = {};
+params.dataSet = cars;
+params.dims = dims;
+
+var parallel = new Parallel(params);
+parallel.run();
+
+</script>
+
+</body>
+</html>
